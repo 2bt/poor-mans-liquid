@@ -75,8 +75,13 @@ public:
             }
 
             if (m_sim.is_solid(x, y)) {
-                float w = std::sin(x) * std::sin(y);
-                fx::set_color(100 + w * 30, 80 + w * 10, 50 - w * 20);
+                int s = 0;
+                s += m_sim.is_solid(x + 1, y);
+                s += m_sim.is_solid(x - 1, y);
+                s += m_sim.is_solid(x, y + 1);
+                s += m_sim.is_solid(x, y - 1);
+                float f = s == 4 ? 1 : 0.6;
+                fx::set_color(100 * f, 80 * f, 50 * f);
                 fx::draw_point(x, y);
             }
         }

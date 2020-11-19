@@ -7,13 +7,13 @@
 
 namespace {
 
-float mix(float x, float y, float a) {
-    return x * (1 - a) + y * a;
-}
-
+static std::array<int, 10> DELTA_TABLE = { -1, -1, -1, 0, 1, 1, 1, 0, -1, -1 };
 
 std::default_random_engine random_engine(42);
 
+int rand_int(int a, int b) {
+    return std::uniform_int_distribution(a, b)(random_engine);
+}
 
 int to_rand_int(float f) {
     static std::uniform_real_distribution<float> dist(0, 1);
@@ -64,10 +64,10 @@ void Simulation::simulate() {
 
         apply_flow();
 
-        resolve_pressure();
-        apply_viscosity();
-        resolve_pressure();
-        apply_viscosity();
+        for (int j = 0; j < 5; ++j) {
+            resolve_pressure();
+            apply_viscosity();
+        }
     }
 }
 
@@ -102,7 +102,9 @@ void Simulation::apply_flow() {
                 c.vy = 0;
             }
 
-            Cell& dst = m_cells[x + dx + (y + dy) * m_width];
+            int tx = x + dx;
+            int ty = y + dy;
+            Cell& dst = m_cells[tx + ty * m_width];
 
             dst.d_count += 1;
             dst.d_vx    += c.vx / c.count;
@@ -122,8 +124,7 @@ void Simulation::apply_flow() {
 
 
 void Simulation::resolve_pressure() {
-    // resolve pressure
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 5; ++i) {
 
         for (int y = 0; y < m_height; ++y)
         for (int x = 0; x < m_width; ++x) {
@@ -135,17 +136,16 @@ void Simulation::resolve_pressure() {
             std::shuffle(dirs.begin(), dirs.end(), random_engine);
 
             for (int d : dirs) {
-                static std::array<int, 10> deltas = { -1, -1, -1, 0, 1, 1, 1, 0, -1, -1 };
-                int dy = deltas[d    ] * c.count * 0.8;
-                int dx = deltas[d + 2] * c.count * 0.8;
+                int dy = DELTA_TABLE[d    ] * c.count * 0.8;
+                int dx = DELTA_TABLE[d + 2] * c.count * 0.8;
 
                 if (is_solid(x + dx / 2, y + dy / 2)) continue;
 
                 if (is_solid(x + dx, y + dy)) continue;
                 Cell& n = m_cells[x + dx + (y + dy) * m_width];
-                if (n.count < c.count) {
-                    float f = 0.6;
-                    float g = 0.2;
+                if (n.count < c.count + 1) {
+                    float f = 0.4;
+                    float g = 0.4;
                     n.d_vx    += c.vx / c.count + dx * f;
                     n.d_vy    += c.vy / c.count + dy * f;
                     n.d_count += 1;
@@ -184,18 +184,17 @@ void Simulation::apply_viscosity() {
         Cell const& n3 = cell_at(x+1, y-1);
         Cell const& n4 = cell_at(x+1, y+1);
 
-        float vx = n1.vx + n2.vx + n3.vx + n4.vx;
-        float vy = n1.vy + n2.vy + n3.vy + n4.vy;
-        int count = n1.count + n2.count + n3.count + n4.count;
-        if (count == 0) {
-            c.d_vx = c.vx;
-            c.d_vy = c.vy;
-            continue;
-        }
+        int weight = 3;
 
-        c.d_vx = c.count * mix(c.vx / c.count, vx / count, 0.7);
-        c.d_vy = c.count * mix(c.vy / c.count, vy / count, 0.7);
+        float vx  = c.vx * weight;
+        float vy  = c.vy * weight;
+        int count = c.count * weight;
+        vx    += n1.vx + n2.vx + n3.vx + n4.vx;
+        vy    += n1.vy + n2.vy + n3.vy + n4.vy;
+        count += n1.count + n2.count + n3.count + n4.count;
 
+        c.d_vx = vx / count * c.count;
+        c.d_vy = vy / count * c.count;
     }
     for (Cell& c : m_cells) {
         c.vx   = c.d_vx;

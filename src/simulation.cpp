@@ -9,10 +9,6 @@ namespace {
 const std::array<int, 10>  offset_table = { -1, -1, -1, 0, 1, 1, 1, 0, -1, -1 };
 std::default_random_engine random_engine(42);
 
-//int rand_int(int a, int b) {
-//    return std::uniform_int_distribution(a, b)(random_engine);
-//}
-
 int to_rand_int(float f) {
     static std::uniform_real_distribution<float> dist(0, 1);
     int i = std::floor(f);
@@ -137,7 +133,8 @@ void Simulation::resolve_pressure() {
             Cell& c = m_cells[x + y * m_width];
             if (c.count <= 1) continue;
 
-            // find a random neighbor and transfer one unit
+            // find a random neighbor
+            // transfer one unit of liquid (and force)
             for (int j = 0; j < 8; ++j) {
                 int nx, ny;
                 get_random_neighbor(nx, ny);
@@ -176,24 +173,20 @@ void Simulation::resolve_pressure() {
 
 
 void Simulation::apply_viscosity() {
-
     for (int y = 0; y < m_height; ++y)
     for (int x = 0; x < m_width; ++x) {
         Cell& c = m_cells[x + y * m_width];
         if (c.count == 0) continue;
-
         int weight = 1;
         float vx    = c.vx * weight;
         float vy    = c.vy * weight;
         int   count = c.count * weight;
-
         for (int i = 0; i < 8; ++i) {
             Cell const& n = cell_at(x + offset_table[i], y + offset_table[i + 2]);
             vx    += n.vx;
             vy    += n.vy;
             count += n.count;
         }
-
         c.d_vx = vx / count * c.count;
         c.d_vy = vy / count * c.count;
     }

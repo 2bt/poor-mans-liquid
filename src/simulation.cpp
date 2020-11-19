@@ -6,7 +6,7 @@
 
 namespace {
 
-
+const std::array<int, 10>  offset_table = { -1, -1, -1, 0, 1, 1, 1, 0, -1, -1 };
 std::default_random_engine random_engine(42);
 
 //int rand_int(int a, int b) {
@@ -69,6 +69,10 @@ void Simulation::apply_flow() {
         // gravity
         c.vy += 0.1 * c.count;
 
+        // friction
+        c.vx *= 0.99;
+        c.vy *= 0.99;
+
         for (int i = 0; i < c.count; ++i) {
 
             int dx = to_rand_int(c.vx);
@@ -115,13 +119,12 @@ void Simulation::apply_flow() {
 
 
 void Simulation::get_random_neighbor(int& dx, int& dy) {
-    static const std::array<int, 10> TABLE = { -1, -1, -1, 0, 1, 1, 1, 0, -1, -1 };
     if (m_neighbor_index_pos == 0) {
         std::shuffle(m_neighbor_indices.begin(), m_neighbor_indices.end(), random_engine);
     }
     int i = m_neighbor_indices[m_neighbor_index_pos];
-    dy = TABLE[i];
-    dx = TABLE[i + 2];
+    dy = offset_table[i];
+    dx = offset_table[i + 2];
     m_neighbor_index_pos = (m_neighbor_index_pos + 1) % 8;
 }
 
@@ -139,8 +142,8 @@ void Simulation::resolve_pressure() {
                 int nx, ny;
                 get_random_neighbor(nx, ny);
                 float d = c.count * 0.7;
-                int dx = std::floor(nx * d + 0.5);
-                int dy = std::floor(ny * d + 0.5);
+                int dx = nx * d;
+                int dy = ny * d;
 
                 if (is_solid(x + dx / 2, y + dy / 2)) continue;
                 if (is_solid(x + dx, y + dy)) continue;
@@ -148,17 +151,15 @@ void Simulation::resolve_pressure() {
                 Cell& n = m_cells[x + dx + (y + dy) * m_width];
                 if (n.count <= c.count) {
                     float f = 0.5;
-                    float g = 0.5;
-                    n.d_vx    += c.vx / c.count + nx * f;
-                    n.d_vy    += c.vy / c.count + ny * f;
+                    n.d_vx    += c.vx / c.count + dx * f;
+                    n.d_vy    += c.vy / c.count + dy * f;
                     n.d_count += 1;
-                    c.d_vx    -= c.vx / c.count + nx * g;
-                    c.d_vy    -= c.vy / c.count + ny * g;
+                    c.d_vx    -= c.vx / c.count;
+                    c.d_vy    -= c.vy / c.count;
                     c.d_count -= 1;
                     break;
                 }
             }
-
         }
 
         for (Cell& c : m_cells) {
@@ -181,19 +182,17 @@ void Simulation::apply_viscosity() {
         Cell& c = m_cells[x + y * m_width];
         if (c.count == 0) continue;
 
-        Cell const& n1 = cell_at(x-1, y-1);
-        Cell const& n2 = cell_at(x-1, y+1);
-        Cell const& n3 = cell_at(x+1, y-1);
-        Cell const& n4 = cell_at(x+1, y+1);
+        int weight = 1;
+        float vx    = c.vx * weight;
+        float vy    = c.vy * weight;
+        int   count = c.count * weight;
 
-        int weight = 3;
-
-        float vx  = c.vx * weight;
-        float vy  = c.vy * weight;
-        int count = c.count * weight;
-        vx    += n1.vx + n2.vx + n3.vx + n4.vx;
-        vy    += n1.vy + n2.vy + n3.vy + n4.vy;
-        count += n1.count + n2.count + n3.count + n4.count;
+        for (int i = 0; i < 8; ++i) {
+            Cell const& n = cell_at(x + offset_table[i], y + offset_table[i + 2]);
+            vx    += n.vx;
+            vy    += n.vy;
+            count += n.count;
+        }
 
         c.d_vx = vx / count * c.count;
         c.d_vy = vy / count * c.count;

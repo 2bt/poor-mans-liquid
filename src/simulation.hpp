@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <vector>
 
 
@@ -35,6 +36,7 @@ private:
         return x >= 0 && x < m_width && y >= 0 && y < m_height;
     }
 
+    void get_random_neighbor(int& dx, int& dy);
 
     Cell const& cell_at(int x, int y) const {
         if (!is_valid(x, y)) {
@@ -47,5 +49,9 @@ private:
     int               m_width;
     int               m_height;
     std::vector<Cell> m_cells;
+
+
+    std::array<int, 8> m_neighbor_indices = { 0, 1, 2, 3, 4, 5, 6, 7 };
+    int                m_neighbor_index_pos = 0;
 };
 

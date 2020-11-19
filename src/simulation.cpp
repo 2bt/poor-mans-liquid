@@ -1,5 +1,4 @@
 #include "simulation.hpp"
-#include <array>
 #include <random>
 #include <algorithm>
 #include <cmath>
@@ -7,13 +6,12 @@
 
 namespace {
 
-static std::array<int, 10> DELTA_TABLE = { -1, -1, -1, 0, 1, 1, 1, 0, -1, -1 };
 
 std::default_random_engine random_engine(42);
 
-int rand_int(int a, int b) {
-    return std::uniform_int_distribution(a, b)(random_engine);
-}
+//int rand_int(int a, int b) {
+//    return std::uniform_int_distribution(a, b)(random_engine);
+//}
 
 int to_rand_int(float f) {
     static std::uniform_real_distribution<float> dist(0, 1);
@@ -52,22 +50,11 @@ int Simulation::get_liquid(int x, int y) const {
 
 void Simulation::simulate() {
 
-    for (int i = 0; i < 1; ++i) {
+    apply_flow();
 
-        // apply gravity
-        for (Cell& c : m_cells) {
-            if (c.count > 0) c.vy += 0.1 * c.count;
-            c.d_count = 0;
-            c.d_vx = 0;
-            c.d_vy = 0;
-        }
-
-        apply_flow();
-
-        for (int j = 0; j < 5; ++j) {
-            resolve_pressure();
-            apply_viscosity();
-        }
+    for (int j = 0; j < 4; ++j) {
+        resolve_pressure();
+        apply_viscosity();
     }
 }
 
@@ -78,6 +65,9 @@ void Simulation::apply_flow() {
     for (int y = 0; y < m_height; ++y)
     for (int x = 0; x < m_width; ++x) {
         Cell& c = m_cells[x + y * m_width];
+
+        // gravity
+        c.vy += 0.1 * c.count;
 
         for (int i = 0; i < c.count; ++i) {
 
@@ -123,8 +113,22 @@ void Simulation::apply_flow() {
 }
 
 
+
+void Simulation::get_random_neighbor(int& dx, int& dy) {
+    static const std::array<int, 10> table = { -1, -1, -1, 0, 1, 1, 1, 0, -1, -1 };
+    if (m_neighbor_index_pos == 0) {
+        std::shuffle(m_neighbor_indices.begin(), m_neighbor_indices.end(), random_engine);
+    }
+    dy = table[m_neighbor_index_pos];
+    dx = table[m_neighbor_index_pos + 2];
+    m_neighbor_index_pos = (m_neighbor_index_pos + 1) & 7;
+}
+
+
 void Simulation::resolve_pressure() {
-    for (int i = 0; i < 5; ++i) {
+
+    for (int i = 0; i < 10; ++i) {
+
 
         for (int y = 0; y < m_height; ++y)
         for (int x = 0; x < m_width; ++x) {
@@ -132,19 +136,18 @@ void Simulation::resolve_pressure() {
             if (c.count <= 1) continue;
 
             // find a random neighbor and transfer one unit
-            static std::array<int, 8> dirs = { 0, 1, 2, 3, 4, 5, 6, 7 };
-            std::shuffle(dirs.begin(), dirs.end(), random_engine);
-
-            for (int d : dirs) {
-                int dy = DELTA_TABLE[d    ] * c.count * 0.8;
-                int dx = DELTA_TABLE[d + 2] * c.count * 0.8;
+            for (int j = 0; j < 8; ++j) {
+                int dx, dy;
+                get_random_neighbor(dx, dy);
+                dy *= c.count * 0.8;
+                dx *= c.count * 0.8;
 
                 if (is_solid(x + dx / 2, y + dy / 2)) continue;
 
                 if (is_solid(x + dx, y + dy)) continue;
                 Cell& n = m_cells[x + dx + (y + dy) * m_width];
                 if (n.count < c.count + 1) {
-                    float f = 0.4;
+                    float f = 0.6;
                     float g = 0.4;
                     n.d_vx    += c.vx / c.count + dx * f;
                     n.d_vy    += c.vy / c.count + dy * f;

@@ -1,14 +1,20 @@
 #include "simulation.hpp"
 #include "fx.hpp"
+#include <string>
 #include <SDL_image.h>
+#include <SDL.h>
 
 
 class Game : public fx::App {
 public:
 
     bool init() override {
-        SDL_Surface* s = IMG_Load("world.png");
-        if (!s) return false;
+        std::string filename = "./scenes/" + std::to_string(m_scene) + ".png";
+        SDL_Surface* s = IMG_Load(filename.c_str());
+        if (!s) {
+            printf("error: cannot open %s\n", filename.c_str());
+            return false;
+        }
 
         m_sim.init(s->w, s->h);
 
@@ -29,8 +35,8 @@ public:
 
     void click(int button, int xx, int yy) override {
 
-        for (int x = xx - 5; x < xx + 5; ++x)
-        for (int y = yy - 5; y < yy + 5; ++y) {
+        for (int x = xx - 15; x < xx + 15; ++x)
+        for (int y = yy - 15; y < yy + 15; ++y) {
 
             // spawn more liquid
             if (button == 1) {
@@ -50,25 +56,44 @@ public:
 
         m_sim.simulate();
 
+        // draw scene
         for (int y = 0; y < HEIGHT; ++y)
         for (int x = 0; x < WIDTH; ++x) {
-            if (m_sim.is_solid(x, y)) {
-                fx::set_color(150, 120, 90);
+            int l = 0;
+            l += m_sim.get_liquid(x, y) * 4;
+            l += m_sim.get_liquid(x + 1, y) * 2;
+            l += m_sim.get_liquid(x - 1, y) * 2;
+            l += m_sim.get_liquid(x, y + 1) * 2;
+            l += m_sim.get_liquid(x, y - 1) * 2;
+            l += m_sim.get_liquid(x + 1, y - 1);
+            l += m_sim.get_liquid(x + 1, y + 1);
+            l += m_sim.get_liquid(x - 1, y - 1);
+            l += m_sim.get_liquid(x - 1, y + 1);
+            if (l > 2) {
+                fx::set_color(0, l, 100);
                 fx::draw_point(x, y);
             }
-            int l = m_sim.get_liquid(x, y);
-            if (l > 0) {
-                fx::set_color(0, std::min(255, l * 50), 255, 100);
+
+            if (m_sim.is_solid(x, y)) {
+                float w = std::sin(x) * std::sin(y);
+                fx::set_color(100 + w * 30, 80 + w * 10, 50 - w * 20);
                 fx::draw_point(x, y);
             }
         }
 
+        fx::set_font_color(255, 255, 255);
+        fx::printf(8, 8, "scene: %d", m_scene);
 
     }
     void key(int code) override {
-        if (code == 40) init();
+        if (code == SDL_SCANCODE_RETURN) init();
+        if (code >= SDL_SCANCODE_1 && code <= SDL_SCANCODE_5) {
+            m_scene = code - SDL_SCANCODE_1 + 1;
+            init();
+        }
     }
 private:
+    int        m_scene = 1;
     Simulation m_sim;
 };
 

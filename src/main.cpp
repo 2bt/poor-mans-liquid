@@ -70,7 +70,8 @@ public:
             l += m_sim.get_liquid(x - 1, y - 1);
             l += m_sim.get_liquid(x - 1, y + 1);
             if (l > 2) {
-                fx::set_color(0, l, 100);
+                //fx::set_color(0, l, 100);
+                fx::set_color(0, 0, 100);
                 fx::draw_point(x, y);
             }
 
@@ -92,7 +93,7 @@ public:
     }
     void key(int code) override {
         if (code == SDL_SCANCODE_RETURN) init();
-        if (code >= SDL_SCANCODE_1 && code <= SDL_SCANCODE_5) {
+        if (code >= SDL_SCANCODE_1 && code <= SDL_SCANCODE_6) {
             m_scene = code - SDL_SCANCODE_1 + 1;
             init();
         }

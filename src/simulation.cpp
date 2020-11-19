@@ -15,7 +15,7 @@ std::default_random_engine random_engine(42);
 
 int to_rand_int(float f) {
     static std::uniform_real_distribution<float> dist(0, 1);
-    int i = floor(f);
+    int i = std::floor(f);
     return i + (f - i > dist(random_engine));
 }
 
@@ -52,7 +52,7 @@ void Simulation::simulate() {
 
     apply_flow();
 
-    for (int j = 0; j < 4; ++j) {
+    for (int j = 0; j < 2; ++j) {
         resolve_pressure();
         apply_viscosity();
     }
@@ -78,8 +78,8 @@ void Simulation::apply_flow() {
 
             // don't go through walls too much
             if (is_solid(x + dx / 2, y + dy / 2)) {
-                dx /= 3;
-                dy /= 3;
+                dx /= 2;
+                dy /= 2;
             }
 
             if (is_solid(x + dx, y)) {
@@ -115,20 +115,19 @@ void Simulation::apply_flow() {
 
 
 void Simulation::get_random_neighbor(int& dx, int& dy) {
-    static const std::array<int, 10> table = { -1, -1, -1, 0, 1, 1, 1, 0, -1, -1 };
+    static const std::array<int, 10> TABLE = { -1, -1, -1, 0, 1, 1, 1, 0, -1, -1 };
     if (m_neighbor_index_pos == 0) {
         std::shuffle(m_neighbor_indices.begin(), m_neighbor_indices.end(), random_engine);
     }
-    dy = table[m_neighbor_index_pos];
-    dx = table[m_neighbor_index_pos + 2];
-    m_neighbor_index_pos = (m_neighbor_index_pos + 1) & 7;
+    int i = m_neighbor_indices[m_neighbor_index_pos];
+    dy = TABLE[i];
+    dx = TABLE[i + 2];
+    m_neighbor_index_pos = (m_neighbor_index_pos + 1) % 8;
 }
 
 
 void Simulation::resolve_pressure() {
-
     for (int i = 0; i < 10; ++i) {
-
 
         for (int y = 0; y < m_height; ++y)
         for (int x = 0; x < m_width; ++x) {
@@ -137,24 +136,24 @@ void Simulation::resolve_pressure() {
 
             // find a random neighbor and transfer one unit
             for (int j = 0; j < 8; ++j) {
-                int dx, dy;
-                get_random_neighbor(dx, dy);
-                dy *= c.count * 0.8;
-                dx *= c.count * 0.8;
+                int nx, ny;
+                get_random_neighbor(nx, ny);
+                float d = c.count * 0.7;
+                int dx = std::floor(nx * d + 0.5);
+                int dy = std::floor(ny * d + 0.5);
 
                 if (is_solid(x + dx / 2, y + dy / 2)) continue;
-
                 if (is_solid(x + dx, y + dy)) continue;
-                Cell& n = m_cells[x + dx + (y + dy) * m_width];
-                if (n.count < c.count + 1) {
-                    float f = 0.6;
-                    float g = 0.4;
-                    n.d_vx    += c.vx / c.count + dx * f;
-                    n.d_vy    += c.vy / c.count + dy * f;
-                    n.d_count += 1;
 
-                    c.d_vx    -= c.vx / c.count + dx * g;
-                    c.d_vy    -= c.vy / c.count + dy * g;
+                Cell& n = m_cells[x + dx + (y + dy) * m_width];
+                if (n.count <= c.count) {
+                    float f = 0.5;
+                    float g = 0.5;
+                    n.d_vx    += c.vx / c.count + nx * f;
+                    n.d_vy    += c.vy / c.count + ny * f;
+                    n.d_count += 1;
+                    c.d_vx    -= c.vx / c.count + nx * g;
+                    c.d_vy    -= c.vy / c.count + ny * g;
                     c.d_count -= 1;
                     break;
                 }

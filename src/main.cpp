@@ -71,7 +71,7 @@ public:
         m_sim.simulate();
 
         // screenshot
-//        if (m_frame_nr < 60 * 5) {
+//        if (m_frame_nr < 60 * 7) {
 //            m_img = SDL_CreateRGBSurfaceWithFormat(0, WIDTH, HEIGHT, 8, SDL_PIXELFORMAT_RGB24);
 //        }
 
@@ -89,7 +89,8 @@ public:
             l += m_sim.get_liquid(x - 1, y - 1);
             l += m_sim.get_liquid(x - 1, y + 1);
             if (l > 2) {
-                draw_pixel(x, y, 0, 0, 150);
+                int c = l < 5 ? 100 : 0;
+                draw_pixel(x, y, c, c, 150);
             }
 
             if (m_sim.is_solid(x, y)) {

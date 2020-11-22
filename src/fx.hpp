@@ -43,6 +43,9 @@ namespace fx {
     void print(float x, float y, const char* str);
     void printf(float x, float y, const char* format, ...);
 
+    void set_pixel(int x, int y, int r, int g, int b);
+    void draw_pixels();
+
     Input const& input();
     bool key_state(int code);
     void exit(int result = 0);

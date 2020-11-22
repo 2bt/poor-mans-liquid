@@ -2,6 +2,7 @@
 #include <SDL.h>
 #include <array>
 #include <cmath>
+#include <vector>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -22,22 +23,49 @@ int            s_result;
 uint8_t const* s_keys;
 
 
-void init_font() {
+class PixelTexture {
+public:
+    bool init(int w, int h) {
+        m_width  = w;
+        m_height = h;
+        m_buffer.resize(m_width * m_height);
+        m_tex = SDL_CreateTexture(s_renderer,
+                                  SDL_PIXELFORMAT_ARGB8888,
+                                  SDL_TEXTUREACCESS_STREAMING,
+                                  m_width, m_height);
+        return !!m_tex;
+    }
+    void set_pixel(int x, int y, uint32_t color) {
+        m_buffer[x + y * m_width] = color;
+    }
+    void draw() {
+        SDL_UpdateTexture(m_tex, nullptr, m_buffer.data(), m_width * 4);
+        SDL_RenderCopy(s_renderer, m_tex, nullptr, nullptr);
+        std::fill(m_buffer.begin(), m_buffer.end(), 0);
+    }
+private:
+    int                   m_width;
+    int                   m_height;
+    std::vector<uint32_t> m_buffer;
+    SDL_Texture*          m_tex;
+};
 
+
+PixelTexture s_pixel_tex;
+
+
+
+bool init_font() {
     std::array<uint16_t, 16 * 6 * 8 * 8> data;
     for (int i = 0; i < (int) data.size(); ++i) {
         data[i] = (FONT[i / 8] & (1 << (7 - i % 8))) ? 0xffff : 0;
     }
     s_font_tex = SDL_CreateTexture(s_renderer, SDL_PIXELFORMAT_ARGB4444,
                                    SDL_TEXTUREACCESS_STATIC, 16 * 8, 6 * 8);
-    if (!s_font_tex) {
-        LOG_ERROR("cannot open font");
-        s_running = false;
-        s_result = 1;
-        return;
-    }
+    if (!s_font_tex) return false;
     SDL_UpdateTexture(s_font_tex, nullptr, data.data(), 2 * 16 * 8);
     SDL_SetTextureBlendMode(s_font_tex, SDL_BLENDMODE_BLEND);
+    return true;
 }
 
 void loop(void* arg) {
@@ -111,9 +139,16 @@ int run(App& app) {
     SDL_RenderSetLogicalSize(s_renderer, WIDTH, HEIGHT);
     s_keys = SDL_GetKeyboardState(nullptr);
 
-
-    init_font();
-
+    if (!init_font()) {
+        LOG_ERROR("font_init failed");
+        s_running = false;
+        s_result = 1;
+    }
+    if (!s_pixel_tex.init(WIDTH, HEIGHT)) {
+        LOG_ERROR("pixel_tex.init failed");
+        s_running = false;
+        s_result = 1;
+    }
     if (!app.init()) {
         LOG_ERROR("app.init failed");
         s_running = false;
@@ -187,6 +222,14 @@ void printf(float x, float y, const char* format, ...) {
     vsnprintf(line.data(), line.size(), format, args);
     va_end(args);
     print(x, y, line.data());
+}
+
+
+void set_pixel(int x, int y, int r, int g, int b) {
+    s_pixel_tex.set_pixel(x, y, r << 16 | g << 8 | b << 0);
+}
+void draw_pixels() {
+    s_pixel_tex.draw();
 }
 
 } // namespace

@@ -5,6 +5,12 @@
 #include <SDL.h>
 
 
+template<class T>
+T clamp(T min, T max, T val) {
+    return std::max(std::min(max, val), min);
+}
+
+
 class Game : public fx::App {
 public:
 
@@ -23,7 +29,7 @@ public:
             uint8_t* a = (uint8_t*) img->pixels + y * img->pitch + x * 3;
             uint32_t p = (a[0] << 0) | (a[1] << 8) | (a[2] << 16);
             if (p == 0xffffff) {
-                m_sim.set_solid(x, y);
+                m_sim.set_solid(x, y, true);
             }
             if (p == 0xff0000) {
                 m_sim.set_liquid(x, y, 1);
@@ -68,9 +74,8 @@ public:
     SDL_Surface* m_img      = nullptr;
     int          m_frame_nr = 0;
 
-    void draw_pixel(int x, int y, int r, int g, int b) {
-        fx::set_color(r, g, b);
-        fx::draw_point(x, y);
+    void pixel(int x, int y, int r, int g, int b) {
+        fx::set_pixel(x, y, r, g, b);
         if (m_img) {
             uint8_t* a = (uint8_t*) m_img->pixels + y * m_img->pitch + x * 3;
             a[0] = r;
@@ -91,6 +96,7 @@ public:
         // draw scene
         for (int y = 0; y < HEIGHT; ++y)
         for (int x = 0; x < WIDTH; ++x) {
+
             int l = 0;
             l += m_sim.get_liquid(x, y) * 4;
             l += m_sim.get_liquid(x + 1, y) * 2;
@@ -103,7 +109,7 @@ public:
             l += m_sim.get_liquid(x - 1, y + 1);
             if (l > 2) {
                 int c = l < 5 ? 100 : 0;
-                draw_pixel(x, y, c, c, 150);
+                pixel(x, y, c, c, 150);
             }
 
             if (m_sim.is_solid(x, y)) {
@@ -113,10 +119,11 @@ public:
                 s += m_sim.is_solid(x, y + 1);
                 s += m_sim.is_solid(x, y - 1);
                 float f = s == 4 ? 1 : 0.6;
-                draw_pixel(x, y, 100 * f, 80 * f, 50 * f);
+                pixel(x, y, 100 * f, 80 * f, 50 * f);
             }
         }
 
+        fx::draw_pixels();
 
         if (m_img) {
             static char name[64];

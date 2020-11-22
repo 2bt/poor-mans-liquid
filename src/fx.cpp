@@ -13,12 +13,13 @@ namespace {
 
 #include "font.hpp"
 
-SDL_Window*   s_window;
-SDL_Renderer* s_renderer;
-SDL_Texture*  s_font_tex;
-Input         s_input;
-bool          s_running;
-int           s_result;
+SDL_Window*    s_window;
+SDL_Renderer*  s_renderer;
+SDL_Texture*   s_font_tex;
+Input          s_input;
+bool           s_running;
+int            s_result;
+uint8_t const* s_keys;
 
 
 void init_font() {
@@ -63,16 +64,14 @@ void loop(void* arg) {
     }
 
 
-    const Uint8* ks = SDL_GetKeyboardState(nullptr);
-
     s_input.prev_x = s_input.x;
     s_input.prev_y = s_input.y;
     s_input.prev_a = s_input.a;
     s_input.prev_b = s_input.b;
-    s_input.x = !!ks[SDL_SCANCODE_RIGHT] - !!ks[SDL_SCANCODE_LEFT];
-    s_input.y = !!ks[SDL_SCANCODE_DOWN] - !!ks[SDL_SCANCODE_UP];
-    s_input.a = !!ks[SDL_SCANCODE_X];
-    s_input.b = !!ks[SDL_SCANCODE_C];
+    s_input.x = !!s_keys[SDL_SCANCODE_RIGHT] - !!s_keys[SDL_SCANCODE_LEFT];
+    s_input.y = !!s_keys[SDL_SCANCODE_DOWN] - !!s_keys[SDL_SCANCODE_UP];
+    s_input.a = !!s_keys[SDL_SCANCODE_X];
+    s_input.b = !!s_keys[SDL_SCANCODE_C];
 
     SDL_SetRenderDrawColor(s_renderer, 0, 0, 0, 0);
     SDL_RenderClear(s_renderer);
@@ -110,6 +109,8 @@ int run(App& app) {
     s_renderer = SDL_CreateRenderer(s_window, -1, SDL_RENDERER_PRESENTVSYNC);
     SDL_SetRenderDrawBlendMode(s_renderer, SDL_BLENDMODE_BLEND);
     SDL_RenderSetLogicalSize(s_renderer, WIDTH, HEIGHT);
+    s_keys = SDL_GetKeyboardState(nullptr);
+
 
     init_font();
 
@@ -134,6 +135,10 @@ int run(App& app) {
 }
 
 Input const& input() { return s_input; }
+
+bool key_state(int code) {
+    return !!s_keys[code];
+}
 
 void set_color(int r, int g, int b, int a) {
     SDL_SetRenderDrawColor(s_renderer, r, g, b, a);

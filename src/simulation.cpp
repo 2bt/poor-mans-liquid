@@ -26,9 +26,9 @@ void Simulation::init(int w, int h) {
     m_cells.resize(m_width * m_height);
 }
 
-void Simulation::set_solid(int x, int y) {
+void Simulation::set_solid(int x, int y, bool s) {
     if (!is_valid(x, y)) return;
-    m_cells[x + y * m_width] = { true };
+    m_cells[x + y * m_width] = { s };
 }
 bool Simulation::is_solid(int x, int y) const {
     return cell_at(x, y).solid;

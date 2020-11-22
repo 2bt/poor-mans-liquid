@@ -44,6 +44,7 @@ namespace fx {
     void printf(float x, float y, const char* format, ...);
 
     Input const& input();
+    bool key_state(int code);
     void exit(int result = 0);
     int run(App& App);
 }

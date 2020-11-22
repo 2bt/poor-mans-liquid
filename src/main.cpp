@@ -33,19 +33,32 @@ public:
         return true;
     }
 
-    void click(int button, int xx, int yy) override {
+    void click(int button, int x, int y) override {
 
-        for (int x = xx - 15; x < xx + 15; ++x)
-        for (int y = yy - 15; y < yy + 15; ++y) {
+        bool earth = fx::key_state(SDL_SCANCODE_LSHIFT) || fx::key_state(SDL_SCANCODE_RSHIFT);
+        int r = earth ? 8 : 15;
 
-            // spawn more liquid
-            if (button == 1) {
-                if (!m_sim.is_solid(x, y)) m_sim.set_liquid(x, y, 1);
+        for (int dy = -r; dy <= r; ++dy)
+        for (int dx = -r; dx <= r; ++dx) {
+            if (dx * dx + dy * dy > r * r + 3) continue;
+
+            int tx = x + dx;
+            int ty = y + dy;
+
+            if (earth) {
+                if (button == 1) m_sim.set_solid(tx, ty, true);
+                if (button == 3) m_sim.set_solid(tx, ty, false);
             }
+            else {
 
-            // erase
-            if (button == 3) {
-                if (!m_sim.is_solid(x, y)) m_sim.set_liquid(x, y, 0);
+                // spawn more liquid
+                if (button == 1) {
+                    if (!m_sim.is_solid(tx, ty)) m_sim.set_liquid(tx, ty, 1);
+                }
+                // erase
+                if (button == 3) {
+                    if (!m_sim.is_solid(tx, ty)) m_sim.set_liquid(tx, ty, 0);
+                }
             }
 
         }

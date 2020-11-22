@@ -9,7 +9,7 @@ public:
     void init(int w, int h);
     void simulate();
 
-    void set_solid(int x, int y);
+    void set_solid(int x, int y, bool s = true);
     bool is_solid(int x, int y) const;
 
     void set_liquid(int x, int y, int l);

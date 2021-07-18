@@ -1,6 +1,7 @@
 #include "simulation.hpp"
 #include "fx.hpp"
 #include <string>
+#include <chrono>
 #include <SDL_image.h>
 #include <SDL.h>
 
@@ -86,7 +87,20 @@ public:
 
     void update() override {
 
+        auto start = std::chrono::high_resolution_clock::now();
+
         m_sim.simulate();
+
+        auto end = std::chrono::high_resolution_clock::now();
+        m_time_sum     += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        m_time_counter += 1;
+        if (m_time_counter >= 60) {
+            m_time         = m_time_sum / m_time_counter;
+            m_time_sum     = 0;
+            m_time_counter = 0;
+        }
+
+
 
         // screenshot
 //        if (m_frame_nr < 60 * 7) {
@@ -108,7 +122,7 @@ public:
             l += m_sim.get_liquid(x - 1, y - 1);
             l += m_sim.get_liquid(x - 1, y + 1);
             if (l > 2) {
-                int c = l < 5 ? 100 : 0;
+                int c = l < 5 ? 80 : 0;
                 pixel(x, y, c, c, 150);
             }
 
@@ -124,6 +138,8 @@ public:
         }
 
         fx::draw_pixels();
+        fx::printf(4, 4, "TIME:%6d", m_time);
+
 
         if (m_img) {
             static char name[64];
@@ -143,6 +159,10 @@ public:
 private:
     int        m_scene = 1;
     Simulation m_sim;
+
+    int        m_time_counter = 0;
+    int        m_time_sum     = 0;
+    int        m_time         = 0;
 };
 
 

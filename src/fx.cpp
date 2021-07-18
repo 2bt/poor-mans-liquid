@@ -25,6 +25,11 @@ uint8_t const* s_keys;
 
 class PixelTexture {
 public:
+    void free() {
+        if (!m_tex) return;
+        SDL_DestroyTexture(m_tex);
+        m_tex = nullptr;
+    }
     bool init(int w, int h) {
         m_width  = w;
         m_height = h;
@@ -126,7 +131,7 @@ int run(App& app) {
 
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
 
-    s_window = SDL_CreateWindow("MADEVIL",
+    s_window = SDL_CreateWindow("liquid",
                                 SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 #ifdef __EMSCRIPTEN__
                                 WIDTH * 2, HEIGHT * 2, 0);

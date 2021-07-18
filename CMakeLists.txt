@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 project(LIQUID)
 
 add_compile_options(-std=c++17 -Wall -Ofast)
+#add_compile_options(-std=c++17 -Wall -Og -g)
 
 
 find_package(PkgConfig REQUIRED)

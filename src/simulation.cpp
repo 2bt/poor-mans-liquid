@@ -6,14 +6,33 @@
 
 namespace {
 
-const std::array<int, 10>  offset_table = { -1, -1, -1, 0, 1, 1, 1, 0, -1, -1 };
 std::default_random_engine random_engine(42);
+
+int rand_int(int a, int b) {
+    return std::uniform_int_distribution(a, b)(random_engine);
+}
 
 int to_rand_int(float f) {
     static std::uniform_real_distribution<float> dist(0, 1);
     int i = std::floor(f);
     return i + (f - i > dist(random_engine));
 }
+
+
+
+struct Offset { int dx, dy; };
+
+std::vector<Offset> m_random_offsets;
+std::array<int, 7>  m_random_offset_indices = {};
+enum { OFFSET_COUNT = 1 << 16 };
+
+Offset get_random_offset(int i) {
+    i = std::min<int>(i, m_random_offset_indices.size() - 1);
+    int& index = m_random_offset_indices[i];
+    index = (index + 1) % OFFSET_COUNT;
+    return m_random_offsets[i * OFFSET_COUNT + index];
+}
+
 
 
 } // namespace
@@ -24,6 +43,21 @@ void Simulation::init(int w, int h) {
     m_height = h;
     m_cells.clear();
     m_cells.resize(m_width * m_height);
+
+    // init offset table
+    for (int r = 1; r <= (int) m_random_offset_indices.size(); ++r) {
+        for (int i = 0; i < OFFSET_COUNT; ++i) {
+            int dx, dy;
+            for (;;) {
+                dx = rand_int(-r, r);
+                dy = rand_int(-r, r);
+                int l = dx * dx + dy * dy;
+                if (l == 0 || l > r * r + 2) continue;
+                break;
+            }
+            m_random_offsets.push_back({ dx, dy });
+        }
+    }
 }
 
 
@@ -44,13 +78,14 @@ void Simulation::apply_flow() {
     for (int y = 0; y < m_height; ++y)
     for (int x = 0; x < m_width; ++x) {
         Cell& c = m_cells[x + y * m_width];
+        if (c.count == 0) continue;
 
         // gravity
-        c.vy += 0.1 * c.count;
+        c.vy += 0.1f * c.count;
 
         // friction
-        c.vx *= 0.99;
-        c.vy *= 0.99;
+        c.vx *= 0.99f;
+        c.vy *= 0.99f;
 
         for (int i = 0; i < c.count; ++i) {
 
@@ -97,40 +132,30 @@ void Simulation::apply_flow() {
 
 
 
-void Simulation::get_random_neighbor(int& dx, int& dy) {
-    if (m_neighbor_index_pos == 0) {
-        std::shuffle(m_neighbor_indices.begin(), m_neighbor_indices.end(), random_engine);
-    }
-    int i = m_neighbor_indices[m_neighbor_index_pos];
-    dy = offset_table[i];
-    dx = offset_table[i + 2];
-    m_neighbor_index_pos = (m_neighbor_index_pos + 1) % 8;
-}
-
-
 void Simulation::resolve_pressure() {
     for (int i = 0; i < 10; ++i) {
 
         for (int y = 0; y < m_height; ++y)
         for (int x = 0; x < m_width; ++x) {
             Cell& c = m_cells[x + y * m_width];
-            if (c.count <= 1) continue;
+            if (c.count < 2) continue;
 
             // find a random neighbor
-            // transfer one unit of liquid (and force)
+            // transfer liquid
+
             for (int j = 0; j < 8; ++j) {
-                int nx, ny;
-                get_random_neighbor(nx, ny);
-                float d = c.count * 0.7;
-                int dx = nx * d;
-                int dy = ny * d;
+
+                auto o = get_random_offset(c.count - 2);
+                int dx = o.dx;
+                int dy = o.dy;
 
                 if (is_solid(x + dx / 2, y + dy / 2)) continue;
                 if (is_solid(x + dx, y + dy)) continue;
 
                 Cell& n = m_cells[x + dx + (y + dy) * m_width];
-                if (n.count <= c.count) {
-                    float f = 0.5;
+
+                if (c.count >= n.count) {
+                    float f = 0.5f;
                     n.d_vx    += c.vx / c.count + dx * f;
                     n.d_vy    += c.vy / c.count + dy * f;
                     n.d_count += 1;
@@ -165,6 +190,7 @@ void Simulation::apply_viscosity() {
         float vy    = c.vy * weight;
         int   count = c.count * weight;
         for (int i = 0; i < 8; ++i) {
+            static const std::array<int, 10> offset_table = { -1, -1, -1, 0, 1, 1, 1, 0, -1, -1 };
             Cell const& n = cell_at(x + offset_table[i], y + offset_table[i + 2]);
             vx    += n.vx;
             vy    += n.vy;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdio>
+#include <cstdint>
 
 
 #define LOG_ERROR(fmt, ...) fprintf(stderr, "ERROR - " fmt "\n", ##__VA_ARGS__)
@@ -22,7 +23,8 @@ namespace fx {
         virtual bool init() { return true; }
         virtual void free() {}
         virtual void key(int code) {}
-        virtual void click(int button, int x, int y) {}
+        virtual void mouse_click(int button, bool state, int x, int y) {}
+        virtual void mouse_move(uint32_t state, int x, int y) {}
         virtual void update() = 0;
     };
     struct Rect {

@@ -89,7 +89,14 @@ void loop(void* arg) {
             break;
 
         case SDL_MOUSEBUTTONDOWN:
-            app.click(e.button.button, e.button.x, e.button.y);
+            app.mouse_click(e.button.button, true, e.button.x, e.button.y);
+            break;
+        case SDL_MOUSEBUTTONUP:
+            app.mouse_click(e.button.button, false, e.button.x, e.button.y);
+            break;
+
+        case SDL_MOUSEMOTION:
+            app.mouse_move(e.motion.state, e.motion.x, e.motion.y);
             break;
 
         default: break;

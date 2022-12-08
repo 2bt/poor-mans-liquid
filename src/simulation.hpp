@@ -15,9 +15,9 @@ public:
         return cell_at(x, y).solid;
     }
 
-    void set_liquid(int x, int y, int l) {
+    void set_liquid(int x, int y, bool l) {
         if (!is_valid(x, y)) return;
-        m_cells[x + y * m_width] = { false, l };
+        m_cells[x + y * m_width] = { false, l ? 1 : 0 };
     }
     int get_liquid(int x, int y) const {
         return cell_at(x, y).count;

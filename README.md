@@ -2,8 +2,8 @@
 
 A grid-based liquid simulation. There are no particles.
 
-Left-click to add liquid and right-click to remove liquid.
-While holding `shift`, left-click to add solid and right-click to remove solid.
+Left-click to add liquid and right-click to add walls.
+While holding `shift`, left-click to remove liquid and right-click to remove walls.
 Press `1` though `7` to change the scene.
 
 ![gif](anim-1.gif)

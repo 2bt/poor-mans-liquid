@@ -128,7 +128,7 @@ void Simulation::apply_flow() {
 
 void Simulation::resolve_pressure() {
     const int NSTEPS = 6;
-    float const BUBBLINESS = 0.7f;
+    float const BUBBLINESS = 0.5f;
 
     for (int i = 0; i < NSTEPS; ++i) {
         for (int y = 0; y < m_height; ++y)
@@ -139,17 +139,12 @@ void Simulation::resolve_pressure() {
 
                 // find a random neighbor
                 Offset o = get_random_offset();
-                int dx = o.dx;
-                int dy = o.dy;
-
-                if (is_solid(x + dx / 2, y + dy / 2)) continue;
-                if (is_solid(x + dx, y + dy)) continue;
-
+                if (is_solid(x + o.dx, y + o.dy)) continue;
 
                 // transfer liquid
-                Cell& n = m_cells[x + dx + (y + dy) * m_width];
-                n.d_vx    += c.vx / c.count + dx * BUBBLINESS;
-                n.d_vy    += c.vy / c.count + dy * BUBBLINESS;
+                Cell& n = m_cells[x + o.dx + (y + o.dy) * m_width];
+                n.d_vx    += c.vx / c.count + o.dx * BUBBLINESS;
+                n.d_vy    += c.vy / c.count + o.dy * BUBBLINESS;
                 n.d_count += 1;
                 c.d_vx    -= c.vx / c.count;
                 c.d_vy    -= c.vy / c.count;

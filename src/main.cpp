@@ -22,63 +22,68 @@ public:
             printf("error: cannot open %s\n", filename.c_str());
             return false;
         }
-
         m_sim.init(img->w, img->h);
-
         for (int y = 0; y < img->h; ++y)
         for (int x = 0; x < img->w; ++x) {
             uint8_t* a = (uint8_t*) img->pixels + y * img->pitch + x * 3;
             uint32_t p = (a[0] << 0) | (a[1] << 8) | (a[2] << 16);
-            if (p == 0xffffff) {
-                m_sim.set_solid(x, y, true);
-            }
-            if (p == 0xff0000) {
-                m_sim.set_liquid(x, y, 1);
-            }
+            if (p == 0xffffff) m_sim.set_solid(x, y, true);
+            if (p == 0xff0000) m_sim.set_liquid(x, y, true);
         }
         SDL_FreeSurface(img);
         return true;
     }
 
-    void click(int button, int x, int y) override {
+    int  m_spawn_x;
+    int  m_spawn_y;
+    bool m_spawn_enabled = false;
+    bool m_spawn_solid   = false;
 
-        bool earth = fx::key_state(SDL_SCANCODE_LSHIFT) || fx::key_state(SDL_SCANCODE_RSHIFT);
-        int r = earth ? 8 : 15;
-
-        for (int dy = -r; dy <= r; ++dy)
-        for (int dx = -r; dx <= r; ++dx) {
-            if (dx * dx + dy * dy > r * r + 3) continue;
-
-            int tx = x + dx;
-            int ty = y + dy;
-
-            if (earth) {
-                if (button == 1) m_sim.set_solid(tx, ty, true);
-                if (button == 3) m_sim.set_solid(tx, ty, false);
+    void spawn() {
+        if (!m_spawn_enabled) return;
+        bool erase = fx::key_state(SDL_SCANCODE_LSHIFT) || fx::key_state(SDL_SCANCODE_RSHIFT);
+        for (int dy = -8; dy <= 8; ++dy)
+        for (int dx = -8; dx <= 8; ++dx) {
+            if (dx * dx + dy * dy > 8 * 8 + 3) continue;
+            int tx = m_spawn_x + dx;
+            int ty = m_spawn_y + dy;
+            if (m_spawn_solid) {
+                m_sim.set_solid(tx, ty, !erase);
             }
             else {
-
-                // spawn more liquid
-                if (button == 1) {
-                    if (!m_sim.is_solid(tx, ty)) m_sim.set_liquid(tx, ty, 1);
-                }
-                // erase
-                if (button == 3) {
-                    if (!m_sim.is_solid(tx, ty)) m_sim.set_liquid(tx, ty, 0);
-                }
+                if (!m_sim.is_solid(tx, ty)) m_sim.set_liquid(tx, ty, !erase);
             }
-
         }
     }
 
 
-    SDL_Surface* m_img      = nullptr;
-    int          m_frame_nr = 0;
+    void mouse_click(int button, bool state, int x, int y) override {
+        if (!state) {
+            m_spawn_enabled = false;
+            return;
+        }
+        m_spawn_x = x;
+        m_spawn_y = y;
+        if (button == 1) {
+            m_spawn_enabled = true;
+            m_spawn_solid   = false;
+        }
+        else if (button == 3) {
+            m_spawn_enabled = true;
+            m_spawn_solid   = true;
+        }
+    }
+    void mouse_move(uint32_t state, int x, int y) override {
+        m_spawn_x = x;
+        m_spawn_y = y;
+    }
+
+
 
     void pixel(int x, int y, int r, int g, int b) {
         fx::set_pixel(x, y, r, g, b);
-        if (m_img) {
-            uint8_t* a = (uint8_t*) m_img->pixels + y * m_img->pitch + x * 3;
+        if (m_screenshot) {
+            uint8_t* a = (uint8_t*) m_screenshot->pixels + y * m_screenshot->pitch + x * 3;
             a[0] = r;
             a[1] = g;
             a[2] = b;
@@ -86,6 +91,8 @@ public:
     }
 
     void update() override {
+
+        spawn();
 
         auto start = std::chrono::high_resolution_clock::now();
 
@@ -103,9 +110,9 @@ public:
 
 
         // screenshot
-//        if (m_frame_nr < 60 * 7) {
-//            m_img = SDL_CreateRGBSurfaceWithFormat(0, WIDTH, HEIGHT, 8, SDL_PIXELFORMAT_RGB24);
-//        }
+        if (m_recording && m_frame_nr < 60 * 7) {
+            m_screenshot = SDL_CreateRGBSurfaceWithFormat(0, WIDTH, HEIGHT, 8, SDL_PIXELFORMAT_RGB24);
+        }
 
         // draw scene
         for (int y = 0; y < HEIGHT; ++y)
@@ -141,12 +148,12 @@ public:
         fx::printf(4, 4, "TIME:%6d", m_time);
 
 
-        if (m_img) {
+        if (m_screenshot) {
             static char name[64];
             sprintf(name, "%04d.png", m_frame_nr++);
-            IMG_SavePNG(m_img, name);
-            SDL_FreeSurface(m_img);
-            m_img = nullptr;
+            IMG_SavePNG(m_screenshot, name);
+            SDL_FreeSurface(m_screenshot);
+            m_screenshot = nullptr;
         }
     }
     void key(int code) override {
@@ -156,18 +163,27 @@ public:
             init();
         }
     }
-private:
-    int        m_scene = 1;
-    Simulation m_sim;
 
-    int        m_time_counter = 0;
-    int        m_time_sum     = 0;
-    int        m_time         = 0;
+    void set_recording(bool r) { m_recording = r; }
+private:
+    int          m_scene = 1;
+    Simulation   m_sim;
+
+    int          m_time_counter = 0;
+    int          m_time_sum     = 0;
+    int          m_time         = 0;
+
+    bool         m_recording  = false;
+    int          m_frame_nr   = 0;
+    SDL_Surface* m_screenshot = nullptr;
 };
 
 
 
-int main() {
+int main(int argc, char** argv) {
     Game game;
+    if (argc == 2 && std::string(argv[1]) == "--record") {
+        game.set_recording(true);
+    }
     return fx::run(game);
 }

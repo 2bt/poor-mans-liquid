@@ -80,44 +80,35 @@ void Simulation::apply_flow() {
         Cell& c = m_cells[x + y * m_width];
         if (c.count == 0) continue;
 
-        // gravity
-        c.vy += 0.1f * c.count;
+        // friction && gravity
+        float vx = c.vx * 0.99f;
+        float vy = c.vy * 0.99f + 0.1f; // * c.count;
 
-        // friction
-        c.vx *= 0.99f;
-        c.vy *= 0.99f;
+        int dx = to_rand_int(vx);
+        int dy = to_rand_int(vy);
 
-        for (int i = 0; i < c.count; ++i) {
-
-            int dx = to_rand_int(c.vx);
-            int dy = to_rand_int(c.vy);
-
-            // collision
-
-            // don't go through walls too much
-            if (is_solid(x + dx / 2, y + dy / 2)) {
-                dx /= 2;
-                dy /= 2;
-            }
-
-            if (is_solid(x + dx, y)) {
-                dx   = 0;
-                c.vx = 0;
-            }
-
-            if (is_solid(x + dx, y + dy)) {
-                dy   = 0;
-                c.vy = 0;
-            }
-
-            int tx = x + dx;
-            int ty = y + dy;
-            Cell& dst = m_cells[tx + ty * m_width];
-
-            dst.d_count += 1;
-            dst.d_vx    += c.vx / c.count;
-            dst.d_vy    += c.vy / c.count;
+        // collision
+        // don't go through walls too much
+        if (is_solid(x + dx / 2, y + dy / 2)) {
+            dx /= 2;
+            dy /= 2;
         }
+        if (is_solid(x + dx, y)) {
+            dx = 0;
+            vx = 0;
+        }
+        if (is_solid(x + dx, y + dy)) {
+            dy = 0;
+            vy = 0;
+        }
+
+        int tx = x + dx;
+        int ty = y + dy;
+        Cell& dst = m_cells[tx + ty * m_width];
+
+        dst.d_count += c.count;
+        dst.d_vx    += vx;
+        dst.d_vy    += vy;
     }
 
     for (Cell& c : m_cells) {

@@ -69,7 +69,7 @@ public:
         }
     }
     void key(int code) override {
-        if (code >= SDL_SCANCODE_1 && code <= SDL_SCANCODE_7) {
+        if (code >= SDL_SCANCODE_1 && code <= SDL_SCANCODE_8) {
             m_scene = code - SDL_SCANCODE_1 + 1;
             m_frame_nr = 0;
             init();

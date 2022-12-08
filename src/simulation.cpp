@@ -16,39 +16,15 @@ int to_rand_int(float f) {
 
 struct Offset { int dx, dy; };
 Offset get_random_offset() {
-    std::array<Offset, 32> OFFSETS = {
+    std::array<Offset, 8> OFFSETS = {
         Offset{-1, 1},
-        Offset{-1, 1},
-        Offset{ 1,-1},
-        Offset{-1, 0},
-        Offset{ 1, 0},
-        Offset{ 1, 1},
-        Offset{ 0, 1},
-        Offset{-1,-1},
-        Offset{ 1, 0},
-        Offset{ 0,-1},
-        Offset{ 0, 1},
-        Offset{ 1,-1},
-        Offset{ 1, 1},
-        Offset{-1, 1},
-        Offset{ 1, 1},
-        Offset{ 0, 1},
-        Offset{ 0,-1},
-        Offset{ 0, 1},
-        Offset{-1, 0},
-        Offset{ 0,-1},
-        Offset{ 1,-1},
-        Offset{ 1, 1},
-        Offset{ 0,-1},
-        Offset{-1,-1},
-        Offset{-1, 1},
-        Offset{-1,-1},
-        Offset{-1, 0},
         Offset{ 1, 0},
         Offset{-1,-1},
-        Offset{ 1,-1},
-        Offset{ 1, 0},
+        Offset{ 0,-1},
         Offset{-1, 0},
+        Offset{ 0, 1},
+        Offset{ 1, 1},
+        Offset{ 1,-1},
     };
     static int index = 0;
     index = (index + 1) % OFFSETS.size();

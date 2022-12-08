@@ -6,12 +6,6 @@
 #include <SDL.h>
 
 
-template<class T>
-T clamp(T min, T max, T val) {
-    return std::max(std::min(max, val), min);
-}
-
-
 class Game : public fx::App {
 public:
 
@@ -34,70 +28,13 @@ public:
         return true;
     }
 
-    int  m_spawn_x;
-    int  m_spawn_y;
-    bool m_spawn_enabled = false;
-    bool m_spawn_solid   = false;
-
-    void spawn() {
-        if (!m_spawn_enabled) return;
-        bool erase = fx::key_state(SDL_SCANCODE_LSHIFT) || fx::key_state(SDL_SCANCODE_RSHIFT);
-        for (int dy = -8; dy <= 8; ++dy)
-        for (int dx = -8; dx <= 8; ++dx) {
-            if (dx * dx + dy * dy > 8 * 8 + 3) continue;
-            int tx = m_spawn_x + dx;
-            int ty = m_spawn_y + dy;
-            if (m_spawn_solid) {
-                m_sim.set_solid(tx, ty, !erase);
-            }
-            else {
-                if (!m_sim.is_solid(tx, ty)) m_sim.set_liquid(tx, ty, !erase);
-            }
-        }
-    }
-
-
-    void mouse_click(int button, bool state, int x, int y) override {
-        if (!state) {
-            m_spawn_enabled = false;
-            return;
-        }
-        m_spawn_x = x;
-        m_spawn_y = y;
-        if (button == 1) {
-            m_spawn_enabled = true;
-            m_spawn_solid   = false;
-        }
-        else if (button == 3) {
-            m_spawn_enabled = true;
-            m_spawn_solid   = true;
-        }
-    }
-    void mouse_move(uint32_t state, int x, int y) override {
-        m_spawn_x = x;
-        m_spawn_y = y;
-    }
-
-
-
-    void pixel(int x, int y, int r, int g, int b) {
-        fx::set_pixel(x, y, r, g, b);
-        if (m_screenshot) {
-            uint8_t* a = (uint8_t*) m_screenshot->pixels + y * m_screenshot->pitch + x * 3;
-            a[0] = r;
-            a[1] = g;
-            a[2] = b;
-        }
-    }
-
     void update() override {
 
         spawn();
 
+        // similate & track time
         auto start = std::chrono::high_resolution_clock::now();
-
         m_sim.simulate();
-
         auto end = std::chrono::high_resolution_clock::now();
         m_time_sum     += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
         m_time_counter += 1;
@@ -108,7 +45,6 @@ public:
         }
 
 
-
         // screenshot
         if (m_recording && m_frame_nr < 60 * 7) {
             m_screenshot = SDL_CreateRGBSurfaceWithFormat(0, WIDTH, HEIGHT, 8, SDL_PIXELFORMAT_RGB24);
@@ -117,33 +53,9 @@ public:
         // draw scene
         for (int y = 0; y < HEIGHT; ++y)
         for (int x = 0; x < WIDTH; ++x) {
-
-            int l = 0;
-            l += m_sim.get_liquid(x, y) * 4;
-            l += m_sim.get_liquid(x + 1, y) * 2;
-            l += m_sim.get_liquid(x - 1, y) * 2;
-            l += m_sim.get_liquid(x, y + 1) * 2;
-            l += m_sim.get_liquid(x, y - 1) * 2;
-            l += m_sim.get_liquid(x + 1, y - 1);
-            l += m_sim.get_liquid(x + 1, y + 1);
-            l += m_sim.get_liquid(x - 1, y - 1);
-            l += m_sim.get_liquid(x - 1, y + 1);
-            if (l > 2) {
-                int c = l < 5 ? 80 : 0;
-                pixel(x, y, c, c, 150);
-            }
-
-            if (m_sim.is_solid(x, y)) {
-                int s = 0;
-                s += m_sim.is_solid(x + 1, y);
-                s += m_sim.is_solid(x - 1, y);
-                s += m_sim.is_solid(x, y + 1);
-                s += m_sim.is_solid(x, y - 1);
-                float f = s == 4 ? 1 : 0.6;
-                pixel(x, y, 100 * f, 80 * f, 50 * f);
-            }
+            if (m_sim.get_liquid(x, y)) pixel(x, y, 0, 0, 255);
+            if (m_sim.is_solid(x, y))   pixel(x, y, 100, 100, 100);
         }
-
         fx::draw_pixels();
         fx::printf(4, 4, "TIME:%6d", m_time);
 
@@ -163,8 +75,57 @@ public:
             init();
         }
     }
+    void mouse_click(int button, bool state, int x, int y) override {
+        if (!state) {
+            m_spawn_enabled = false;
+            return;
+        }
+        m_spawn_x = x;
+        m_spawn_y = y;
+        if (button == 1) {
+            m_spawn_enabled = true;
+            m_spawn_erase   = false;
+        }
+        else if (button == 3) {
+            m_spawn_enabled = true;
+            m_spawn_erase   = true;
+        }
+    }
+    void mouse_move(uint32_t state, int x, int y) override {
+        m_spawn_x = x;
+        m_spawn_y = y;
+    }
+
+    void spawn() {
+        if (!m_spawn_enabled) return;
+        bool solid = fx::key_state(SDL_SCANCODE_LSHIFT) || fx::key_state(SDL_SCANCODE_RSHIFT);
+        int r = solid ? 3 : 8;
+        for (int dy = -r; dy <= r; ++dy)
+        for (int dx = -r; dx <= r; ++dx) {
+            if (dx * dx + dy * dy > r * r + 3) continue;
+            int tx = m_spawn_x + dx;
+            int ty = m_spawn_y + dy;
+            if (solid) {
+                m_sim.set_solid(tx, ty, !m_spawn_erase);
+            }
+            else {
+                if (!m_sim.is_solid(tx, ty)) m_sim.set_liquid(tx, ty, !m_spawn_erase);
+            }
+        }
+    }
+
+    void pixel(int x, int y, int r, int g, int b) {
+        fx::set_pixel(x, y, r, g, b);
+        if (m_screenshot) {
+            uint8_t* a = (uint8_t*) m_screenshot->pixels + y * m_screenshot->pitch + x * 3;
+            a[0] = r;
+            a[1] = g;
+            a[2] = b;
+        }
+    }
 
     void set_recording(bool r) { m_recording = r; }
+
 private:
     int          m_scene = 1;
     Simulation   m_sim;
@@ -172,6 +133,11 @@ private:
     int          m_time_counter = 0;
     int          m_time_sum     = 0;
     int          m_time         = 0;
+
+    int          m_spawn_x;
+    int          m_spawn_y;
+    bool         m_spawn_enabled = false;
+    bool         m_spawn_erase   = false;
 
     bool         m_recording  = false;
     int          m_frame_nr   = 0;

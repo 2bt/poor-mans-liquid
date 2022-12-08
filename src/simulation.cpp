@@ -1,7 +1,6 @@
 #include "simulation.hpp"
+#include <array>
 #include <random>
-#include <algorithm>
-#include <cmath>
 
 
 namespace {
@@ -69,8 +68,10 @@ void Simulation::init(int w, int h) {
 
 
 void Simulation::simulate() {
+    const int NSTEPS = 2;
+
     apply_flow();
-    for (int j = 0; j < 2; ++j) {
+    for (int i = 0; i < NSTEPS; ++i) {
         resolve_pressure();
         apply_viscosity();
     }
@@ -78,7 +79,6 @@ void Simulation::simulate() {
 
 
 void Simulation::apply_flow() {
-
     for (int y = 0; y < m_height; ++y)
     for (int x = 0; x < m_width; ++x) {
         Cell& c = m_cells[x + y * m_width];
@@ -127,8 +127,10 @@ void Simulation::apply_flow() {
 
 
 void Simulation::resolve_pressure() {
-    for (int i = 0; i < 4; ++i) {
+    const int NSTEPS = 6;
+    float const BUBBLINESS = 0.7f;
 
+    for (int i = 0; i < NSTEPS; ++i) {
         for (int y = 0; y < m_height; ++y)
         for (int x = 0; x < m_width; ++x) {
             Cell& c = m_cells[x + y * m_width];
@@ -136,7 +138,6 @@ void Simulation::resolve_pressure() {
             for (int j = 0; j < c.count - 1; ++j) {
 
                 // find a random neighbor
-                // transfer liquid
                 Offset o = get_random_offset();
                 int dx = o.dx;
                 int dy = o.dy;
@@ -144,8 +145,8 @@ void Simulation::resolve_pressure() {
                 if (is_solid(x + dx / 2, y + dy / 2)) continue;
                 if (is_solid(x + dx, y + dy)) continue;
 
-                float const BUBBLINESS = 0.7f;
 
+                // transfer liquid
                 Cell& n = m_cells[x + dx + (y + dy) * m_width];
                 n.d_vx    += c.vx / c.count + dx * BUBBLINESS;
                 n.d_vy    += c.vy / c.count + dy * BUBBLINESS;
@@ -169,6 +170,8 @@ void Simulation::resolve_pressure() {
 
 
 void Simulation::apply_viscosity() {
+    int const RADIUS = 1;
+
     for (int y = 0; y < m_height; ++y)
     for (int x = 0; x < m_width; ++x) {
         Cell& c = m_cells[x + y * m_width];
@@ -176,9 +179,8 @@ void Simulation::apply_viscosity() {
         float vx    = 0;
         float vy    = 0;
         float count = 0;
-        int const S = 1;
-        for (int ox = -S; ox <= S; ++ox)
-        for (int oy = -S; oy <= S; ++oy) {
+        for (int ox = -RADIUS; ox <= RADIUS; ++ox)
+        for (int oy = -RADIUS; oy <= RADIUS; ++oy) {
             Cell const& n = cell_at(x + ox, y + oy);
             vx    += n.vx;
             vy    += n.vy;
